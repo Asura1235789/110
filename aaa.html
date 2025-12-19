@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Dream Pink Christmas</title>
+<style>
+html,body{
+  margin:0;
+  padding:0;
+  background:#020104;
+  overflow:hidden;
+}
+canvas{display:block;}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<script>
+const c = document.getElementById("cv");
+const ctx = c.getContext("2d");
+
+function resize(){
+  c.width = innerWidth;
+  c.height = innerHeight;
+}
+resize();
+addEventListener("resize", resize);
+
+const R=(a,b)=>Math.random()*(b-a)+a;
+
+// ================= 背景漂浮金点 =================
+const bgDots=[];
+for(let i=0;i<120;i++){
+  bgDots.push({
+    x:R(0,c.width),
+    y:R(0,c.height),
+    s:R(0.4,1.2),
+    a:R(0.15,0.5)
+  });
+}
+
+// ================= 圣诞树参数 =================
+const TX=()=>c.width/2;
+const TY=()=>c.height/2+180;
+const TH=420, TR=190;
+
+const pinks=[
+  "#ffd1e8",
+  "#ffb6dc",
+  "#f4a8ff",
+  "#fff1fa"
+];
+
+const tree=[];
+
+// ================= 圣诞树粒子 =================
+class TP{
+  constructor(float=false){
+    const y=R(0,TH);
+    const r=(1-y/TH)*TR;
+    this.x=R(-r,r);
+    this.y=-y;
+    this.z=float?R(-40,40):0;
+    this.size=R(1.2,3);
+    this.col=pinks[Math.floor(R(0,pinks.length))];
+    this.p=R(0,Math.PI*2);
+    this.float=float;
+  }
+  u(){
+    this.p+=0.01;
+    if(this.float){
+      this.y+=Math.sin(this.p)*0.04;
+    }
+  }
+  d(){
+    const a=0.35+Math.sin(this.p)*0.35;
+    ctx.globalAlpha=a;
+    ctx.shadowBlur=18;
+    ctx.shadowColor=this.col;
+    ctx.fillStyle=this.col;
+    ctx.beginPath();
+    ctx.arc(TX()+this.x,TY()+this.y+this.z,this.size,0,Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha=1;
+    ctx.shadowBlur=0;
+  }
+}
+
+for(let i=0;i<2600;i++) tree.push(new TP(false));
+for(let i=0;i<600;i++) tree.push(new TP(true));
+
+// ================= 金色光带 =================
+let ribbonP=0;
+function drawRibbon(){
+  ribbonP+=0.01;
+  ctx.strokeStyle="rgba(255,215,160,0.4)";
+  ctx.lineWidth=1.2;
+  ctx.shadowBlur=12;
+  ctx.shadowColor="rgba(255,210,150,0.5)";
+  ctx.beginPath();
+  for(let y=0;y<TH;y+=6){
+    const r=(1-y/TH)*TR;
+    const a=y*0.04+ribbonP;
+    const x=Math.cos(a)*r*0.75;
+    ctx.lineTo(TX()+x,TY()-y);
+  }
+  ctx.stroke();
+  ctx.shadowBlur=0;
+}
+
+// ================= 星星 =================
+function star(){
+  const x=TX(), y=TY()-TH-25;
+  const r=22+Math.sin(Date.now()*0.004)*4;
+  const g=ctx.createRadialGradient(x,y,4,x,y,r);
+  g.addColorStop(0,"#fff8d8");
+  g.addColorStop(0.4,"#ffd58a");
+  g.addColorStop(1,"rgba(255,213,138,0)");
+  ctx.fillStyle=g;
+  ctx.beginPath();
+  ctx.arc(x,y,r,0,Math.PI*2);
+  ctx.fill();
+}
+
+// ================= 礼物盒 =================
+const gifts = [
+  { x:-70, y:20, w:48, h:36, c:"#ff6fae", r:"#ffd58a" },
+  { x:0,   y:32, w:56, h:42, c:"#ff4d4d", r:"#ffe1a8" },
+  { x:68,  y:24, w:44, h:34, c:"#ff9bd1", r:"#ffd58a" }
+];
+
+function drawGifts(){
+  gifts.forEach(g=>{
+    const gx = TX()+g.x;
+    const gy = TY()+g.y;
+
+    // 底部柔光投影
+    const glow = ctx.createRadialGradient(gx,gy+g.h,6,gx,gy+g.h,40);
+    glow.addColorStop(0,"rgba(255,200,220,0.25)");
+    glow.addColorStop(1,"rgba(255,200,220,0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.ellipse(gx,gy+g.h,36,11,0,0,Math.PI*2);
+    ctx.fill();
+
+    // 盒子主体
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = g.c;
+    ctx.fillStyle = g.c;
+    ctx.fillRect(gx-g.w/2,gy,g.w,g.h);
+
+    // 丝带（竖）
+    ctx.fillStyle = g.r;
+    ctx.fillRect(gx-4,gy,8,g.h);
+
+    // 丝带（横）
+    ctx.fillRect(gx-g.w/2,gy+g.h/2-3,g.w,6);
+
+    // 顶部蝴蝶结
+    ctx.beginPath();
+    ctx.arc(gx-6,gy-2,4,0,Math.PI*2);
+    ctx.arc(gx+6,gy-2,4,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+  });
+}
+
+// ================= 烟花 =================
+const fireworks=[];
+class FW{
+  constructor(){
+    this.x=R(0,c.width);
+    this.y=R(0,c.height*0.6);
+    this.col=["#ffd1e8","#ffd58a","#fff"][Math.floor(R(0,3))];
+    this.ps=[];
+    for(let i=0;i<70;i++){
+      const a=R(0,Math.PI*2), s=R(0.8,3.2);
+      this.ps.push({x:this.x,y:this.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:R(40,80)});
+    }
+  }
+  u(){
+    this.ps.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      p.vy+=0.03; p.l--;
+    });
+    this.ps=this.ps.filter(p=>p.l>0);
+  }
+  d(){
+    ctx.shadowBlur=10;
+    ctx.shadowColor=this.col;
+    this.ps.forEach(p=>{
+      ctx.fillStyle=`rgba(255,255,255,${p.l/80})`;
+      ctx.fillRect(p.x,p.y,2,2);
+    });
+    ctx.shadowBlur=0;
+  }
+}
+setInterval(()=>fireworks.push(new FW()),800);
+
+// ================= 文本 =================
+function text(){
+  ctx.textAlign="center";
+  ctx.shadowBlur=15;
+  ctx.shadowColor="rgba(255,220,200,0.6)";
+  ctx.fillStyle="#fff5ee";
+  ctx.font="42px serif";
+  ctx.fillText("Merry Christmas",c.width/2,120);
+
+  const g=ctx.createLinearGradient(c.width/2-160,0,c.width/2+160,0);
+  g.addColorStop(0,"#ffb6dc");
+  g.addColorStop(1,"#ffd58a");
+  ctx.fillStyle=g;
+  ctx.font="28px cursive";
+  ctx.fillText("愿光与雪都落在你心上",c.width/2,165);
+  ctx.shadowBlur=0;
+}
+
+// ================= 主循环 =================
+function loop(){
+  ctx.fillStyle="rgba(2,1,4,0.25)";
+  ctx.fillRect(0,0,c.width,c.height);
+
+  bgDots.forEach(d=>{
+    ctx.fillStyle=`rgba(255,215,160,${d.a})`;
+    ctx.fillRect(d.x,d.y,d.s,d.s);
+    d.y+=0.1;
+    if(d.y>c.height) d.y=0;
+  });
+
+  tree.forEach(p=>{p.u();p.d();});
+  drawRibbon();
+  star();
+  drawGifts();
+
+  fireworks.forEach(f=>{f.u();f.d();});
+
+  text();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
